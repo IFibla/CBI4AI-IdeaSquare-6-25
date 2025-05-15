@@ -1,4 +1,4 @@
 from .adjacency import Adjacency
-from .landmark import Landmark
+from .landmark import Landmark, LandmarkType, LandmarkProfile
 
-__all__ = ["Landmark", "Adjacency"]
+__all__ = ["Adjacency", "Landmark", "LandmarkType", "LandmarkProfile"]
