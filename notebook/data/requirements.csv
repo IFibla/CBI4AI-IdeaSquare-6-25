@@ -1,0 +1,11 @@
+from_id,to_id,resource_type,quantity
+6,0,materials,100
+9,0,minerals,229
+2,1,water,106
+4,1,goods,121
+6,4,materials,51
+9,4,minerals,90
+3,5,water,137
+0,5,goods,105
+3,7,water,136
+4,7,goods,147

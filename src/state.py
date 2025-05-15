@@ -1,9 +1,13 @@
-from matplotlib import pyplot as plt
+from torch_geometric.data import Data
 from itertools import combinations
+import matplotlib.pyplot as plt
 from typing import List, Union
 from tqdm import trange
+import networkx as nx
 import random
-import uuid
+import torch
+import matplotlib.image as mpimg  # For reading background image
+import os
 
 from src.schemas import Adjacency, Landmark, LandmarkType, LandmarkProfile
 
@@ -138,7 +142,7 @@ class State:
         landmarks = []
         for i, lt in enumerate(selected_types):
             landmark = Landmark(
-                uuid=str(uuid.uuid4()),
+                uuid=i,
                 type=lt,
                 citizens=citizens[i],
                 energy_production=energy_production[i],
@@ -176,30 +180,38 @@ class State:
 
         return adjacencies
 
-    def generate_state(self) -> Union[List[Landmark], List[Adjacency]]:
+    def generate_random_state(self) -> Union[List[Landmark], List[Adjacency]]:
         self.landmarks = self.generate_landmarks()
         self.adjacencies = self.generate_adjacency(self.landmarks)
         return self.landmarks, self.adjacencies
 
-    def __repr__(self) -> str:
-        lines = ["```mermaid", "graph TD"]
-        uuid_to_short = {}
-        class_assignments = []
+    def plot(self, figsize=(12, 8), background_image_path: str = None) -> plt.Figure:
+        if not self.landmarks or not self.adjacencies:
+            raise ValueError("Must generate state before plotting.")
 
-        for i, landmark in enumerate(self.landmarks):
-            short_id = landmark.uuid[:6]
-            uuid_to_short[landmark.uuid] = short_id
-            node_label = f"{short_id}[{landmark.type.value}]"
-            lines.append(f"    {node_label}")
-            class_assignments.append(f"    class {short_id} {landmark.type.value};")
+        G = nx.Graph()
+        id_map = {}
 
-        for adjacency in self.adjacencies:
-            from_id = uuid_to_short.get(adjacency.from_landmark)
-            to_id = uuid_to_short.get(adjacency.to_landmark)
-            if from_id and to_id:
-                lines.append(f"    {from_id} --- {to_id}")
+        # === 1. Add Nodes ===
+        for lm in self.landmarks:
+            short_id = str(lm.name)
+            id_map[str(lm.uuid)] = short_id
+            G.add_node(short_id, type=lm.type)
 
-        # Define class colors
+        # === 2. Add Edges ===
+        for adj in self.adjacencies:
+            G.add_edge(
+                id_map[str(adj.from_landmark)],
+                id_map[str(adj.to_landmark)],
+                distance=adj.distance,
+            )
+
+        # === 3. Use latitude/longitude for positioning ===
+        pos = {
+            id_map[str(lm.uuid)]: (lm.longitude, -lm.latitude)  # Flip y-axis for typical image coordinates
+            for lm in self.landmarks
+        }
+
         type_colors = {
             "agriculture": "#a1d99b",
             "animal_husbandry": "#fdae6b",
@@ -210,10 +222,67 @@ class State:
             "water_treatment": "#c7e9c0",
         }
 
-        for t, color in type_colors.items():
-            lines.append(f"    classDef {t} fill:{color},stroke:#333,stroke-width:1px;")
+        node_colors = [
+            type_colors.get(G.nodes[n]["type"].value, "#ff0000") for n in G.nodes
+        ]
 
-        lines.extend(class_assignments)
-        lines.append("```")
-        return "\n".join(lines)
+        # === 4. Create Plot ===
+        fig, ax = plt.subplots(figsize=figsize)
+
+        # === 5. Add Background Image ===
+        if background_image_path and os.path.exists(background_image_path):
+            img = mpimg.imread(background_image_path)
+            ax.imshow(img, extent=[0, img.shape[0], -img.shape[1], 0])  # Match coordinate system to image size
+
+        # Draw nodes and edges
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, node_size=800)
+        nx.draw_networkx_edges(G, pos, ax=ax, edge_color="#555", width=1.5)
+        nx.draw_networkx_labels(G, pos, ax=ax, font_size=8)
+
+        # === 6. Legend ===
+        handles = [
+            plt.Line2D(
+                [],
+                [],
+                marker="o",
+                color="w",
+                label=label.replace("_", " ").capitalize(),
+                markerfacecolor=color,
+                markersize=10,
+            )
+            for label, color in type_colors.items()
+        ]
+
+        ax.legend(
+            handles=handles,
+            title="Landmark Types",
+            bbox_to_anchor=(1.05, 1),
+            loc="upper left",
+        )
+
+        ax.set_title("Landmarks and Adjacencies (Using Latitude/Longitude)")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+        fig.tight_layout()
+
+        return fig
+
+    @property
+    def gnn_data(self, dtype: torch.dtype = torch.float32) -> Data:
+        node_features = torch.stack(
+            [lm.to_tensor(dtype=dtype) for lm in self.landmarks]
+        )
+
+        edge_tuples = [adj.get_adjacency() for adj in self.adjacencies]
+        edge_index = torch.tensor(edge_tuples, dtype=torch.long).t().contiguous()
+        rev_index = edge_index[[1, 0], :]
+        edge_index = torch.cat([edge_index, rev_index], dim=1)
+
+        edge_attr = torch.tensor(
+            [adj.weights_to_tensor() for adj in self.adjacencies] + [adj.weights_to_tensor() for adj in self.adjacencies],
+            dtype=dtype,
+        )
+
+        return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
+
 

@@ -1,0 +1,11 @@
+id,type,goods_prod,needs,citizens,water_prod,materials_prod,minerals_prod,energy_prod
+0,factory,157.0,"materials,minerals",,,,,0
+1,housing,,"water,energy,goods",1063.0,,,,0
+2,water_source,,,,8657.0,,,0
+3,water_source,,,,6679.0,,,0
+4,factory,379.0,"materials,minerals",,,,,0
+5,housing,,"water,energy,goods",1709.0,,,,0
+6,farm,,,,,216.0,,0
+7,housing,,"water,energy,goods",691.0,,,,0
+8,water_source,,,,8811.0,,,0
+9,mine,,,,,,254.0,0

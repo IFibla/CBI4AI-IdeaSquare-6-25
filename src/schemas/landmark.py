@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from enum import Enum
+
+from pydantic import BaseModel, Field
+import torch
 
 
 class LandmarkType(str, Enum):
@@ -24,7 +26,14 @@ LandmarkProfile = {
 
 
 class Landmark(BaseModel):
-    uuid: str = Field(..., description="UUID of the landmark")
+    uuid: int = Field(..., description="ID of the landmark")
+    longitude: float = Field(
+        ..., description="Longitude of the landmark in degrees"
+    )
+    latitude: float = Field(
+        ..., description="Latitude of the landmark in degrees"
+    )
+    name: str = Field(..., description="Name of the landmark")
     type: LandmarkType = Field(
         ..., description="Essential/generalized type of the landmark"
     )
@@ -47,3 +56,38 @@ class Landmark(BaseModel):
     food_production: float = Field(
         0, description="Food production of the landmark in kg"
     )
+
+    @property
+    def needs(self) -> str:
+        return [
+            self.energy_consumption > 0,
+            self.water_consumption > 0,
+            self.food_consumption > 0,
+        ]
+
+    @property
+    def numerical_type(self) -> List[str]:
+        return [
+            LandmarkType.AGRICULTURE == self.type,
+            LandmarkType.ANIMAL_HUSBANDRY == self.type,
+            LandmarkType.NEIGHBOURHOOD_SHOP == self.type,
+            LandmarkType.POWER_PLANT == self.type,
+            LandmarkType.STORAGE == self.type,
+            LandmarkType.WATER_PRODUCTION == self.type,
+        ]
+
+    def to_tensor(self, dtype: Optional[torch.dtype] = torch.float32) -> torch.Tensor:
+        return torch.tensor(
+            [
+                self.citizens,
+                self.energy_consumption,
+                self.energy_production,
+                self.water_consumption,
+                self.water_production,
+                self.food_consumption,
+                self.food_production,
+            ]
+            + self.needs
+            + self.numerical_type,
+            dtype=dtype,
+        )
