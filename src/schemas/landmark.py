@@ -28,12 +28,12 @@ LandmarkProfile = {
 class Landmark(BaseModel):
     uuid: int = Field(..., description="ID of the landmark")
     longitude: float = Field(
-        ..., description="Longitude of the landmark in degrees"
+        0, description="Longitude of the landmark in degrees"
     )
     latitude: float = Field(
-        ..., description="Latitude of the landmark in degrees"
+        0, description="Latitude of the landmark in degrees"
     )
-    name: str = Field(..., description="Name of the landmark")
+    name: str = Field("", description="Name of the landmark")
     type: LandmarkType = Field(
         ..., description="Essential/generalized type of the landmark"
     )

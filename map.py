@@ -7,7 +7,7 @@ st.title("Interactive Landmark Creator")
 if "landmarks" not in st.session_state:
     st.session_state.landmarks = []
 if "uuid_counter" not in st.session_state:
-    st.session_state.uuid_counter = 1
+    st.session_state.uuid_counter = 0
 if "clicked" not in st.session_state:
     st.session_state.clicked = False
 if "click_pos" not in st.session_state:

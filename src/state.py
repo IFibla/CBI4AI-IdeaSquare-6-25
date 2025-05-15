@@ -189,6 +189,10 @@ class State:
         if not self.landmarks or not self.adjacencies:
             raise ValueError("Must generate state before plotting.")
 
+        if background_image_path and os.path.exists(background_image_path):
+            img = mpimg.imread(background_image_path)
+
+
         G = nx.Graph()
         id_map = {}
 
@@ -208,7 +212,7 @@ class State:
 
         # === 3. Use latitude/longitude for positioning ===
         pos = {
-            id_map[str(lm.uuid)]: (lm.longitude, -lm.latitude)  # Flip y-axis for typical image coordinates
+            id_map[str(lm.uuid)]: (lm.longitude, lm.latitude)  # Flip y-axis for typical image coordinates
             for lm in self.landmarks
         }
 
@@ -223,7 +227,7 @@ class State:
         }
 
         node_colors = [
-            type_colors.get(G.nodes[n]["type"].value, "#ff0000") for n in G.nodes
+            type_colors.get(G.nodes[n]["type"].value, "#cccccc") for n in G.nodes
         ]
 
         # === 4. Create Plot ===
@@ -231,12 +235,11 @@ class State:
 
         # === 5. Add Background Image ===
         if background_image_path and os.path.exists(background_image_path):
-            img = mpimg.imread(background_image_path)
-            ax.imshow(img, extent=[0, img.shape[0], -img.shape[1], 0])  # Match coordinate system to image size
+            ax.imshow(img, extent=[0, img.shape[1], img.shape[0], 0])  # Match coordinate system to image size
 
         # Draw nodes and edges
         nx.draw_networkx_nodes(G, pos, ax=ax, node_color=node_colors, node_size=800)
-        nx.draw_networkx_edges(G, pos, ax=ax, edge_color="#555", width=1.5)
+        nx.draw_networkx_edges(G, pos, ax=ax, edge_color="#ff0000", width=1.5)
         nx.draw_networkx_labels(G, pos, ax=ax, font_size=8)
 
         # === 6. Legend ===
